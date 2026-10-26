@@ -61,7 +61,7 @@ function makeCanvas(w, h) { const c = document.createElement('canvas'); c.width 
 
 // ---------------------------------------------------------------- assets
 const IMG = {};
-const IMG_LIST = ['kia_rear', 'kia_front', 'asmaa', 'corolla', 'sunny', 'hilux', 'microbus', 'hiace', 'verna', 'cerato', 'truck'];
+const IMG_LIST = ['kia_rear', 'kia_front', 'asmaa', 'corolla', 'sunny', 'hilux', 'microbus', 'hiace', 'verna', 'cerato', 'truck', 'bike1', 'bike2', 'bike3'];
 function loadImage(name, src) {
   return new Promise(res => { const i = new Image(); i.onload = () => { IMG[name] = i; res(); }; i.onerror = () => res(); i.src = src; });
 }
@@ -101,6 +101,7 @@ function platedSprite(img, frac, letters, nums) {
 
 const PLATE_LETTERS = ['ن ط ص', 'ر ب ع', 'م ج د', 'ل ق و', 'ف ه ي', 'س ك ن', 'ط أ ر'];
 let CAR_TYPES = [];
+let BIKE_TYPES = [];
 let PLAYER_SPR = null, START_CAR = null;
 
 function buildCarTypes() {
@@ -116,6 +117,7 @@ function buildCarTypes() {
   if (IMG.verna) add('verna', IMG.verna, 1050, { collW: 690, weight: 0.7, lights: [0.04, 0.4] });
   if (IMG.truck) add('truck', IMG.truck, 640, { weight: 0.8, speed: [0.16, 0.26], changer: 0.05, lights: [0.08, 0.95] });
   CAR_TYPES = t;
+  BIKE_TYPES = [['bike1', 400], ['bike2', 440], ['bike3', 760]].filter(([k]) => IMG[k]).map(([k, w]) => ({ key: k, spr: IMG[k], w, collW: 330 }));
   if (IMG.kia_rear) PLAYER_SPR = platedSprite(IMG.kia_rear, [0.387, 0.699, 0.225, 0.143], 'Galaxy', null);
   if (IMG.kia_front) START_CAR = platedSprite(IMG.kia_front, [0.122, 0.625, 0.19, 0.15], 'Galaxy', null);
 }
@@ -328,7 +330,7 @@ const state = {
   score: 0, best: +store.get('asmaa_best', 0) || 0, distance: 0, nearCount: 0,
   time: 0, level: 1, lives: 3, invuln: 0, shake: 0,
   combo: 1, comboTimer: 0, bubble: null, bubbleCool: 0,
-  floaters: [], cars: [], skyOffset: 0, countdown: 0, hornCool: 0, braking: false,
+  floaters: [], cars: [], bikes: [], skyOffset: 0, countdown: 0, hornCool: 0, braking: false,
   bgIndex: 0, bgFade: 1, sparks: [],
 };
 
@@ -487,6 +489,49 @@ function honk() {
   }
 }
 
+// ---------------------------------------------------------------- stunt bikers ("عريس جنة")
+// They weave across every lane doing wheelies; ramming one is a bonus, not a crash.
+const BIKE_LINES = ['يا عريس جنة!', 'طيّرته!', 'عريس جنة اتزحلق', 'خد عندك!'];
+function bikeTarget() { return Math.min(1 + Math.floor(state.level / 2), 4); }
+function spawnBike(b, minAhead, maxAhead) {
+  Object.assign(b, {
+    bike: true, type: pick(BIKE_TYPES), z: (playerWorldZ() + rand(minAhead, maxAhead) * SEG) % trackLength,
+    center: rand(-0.45, 0.45), amp: rand(0.3, 0.55), phase: rand(0, Math.PI * 2),
+    freq: rand(1.3, 2.2) + state.level * 0.08, base: MAX_SPEED * rand(0.3, 0.45),
+    wobble: 0, fly: 0, flyDir: 1, offset: 0, bob: rand(0, 6),
+  });
+  b.speed = b.base;
+}
+function updateBikes(dt) {
+  if (!BIKE_TYPES.length) return;
+  while (state.bikes.length < bikeTarget()) { const b = {}; state.bikes.push(b); spawnBike(b, DRAW_DIST * 0.5, DRAW_DIST * 0.9); }
+  const pz = playerWorldZ();
+  for (const b of state.bikes) {
+    if (b.fly > 0) {                       // knocked flying: keeps pace ahead of her, spins, fades
+      b.fly += dt; b.z = (b.z + state.speed * 1.02 * dt) % trackLength;
+      if (b.fly > 1.1) spawnBike(b, DRAW_DIST * 0.6, DRAW_DIST * 0.9);
+      continue;
+    }
+    const rel = relZ(b.z, pz);
+    if (rel < -SEG * 12 || rel > DRAW_DIST * SEG * 1.1) { spawnBike(b, DRAW_DIST * 0.6, DRAW_DIST * 0.9); continue; }
+    b.phase += b.freq * dt;
+    b.offset = clamp(b.center + b.amp * Math.sin(b.phase) + 0.15 * Math.sin(b.phase * 2.7), -0.9, 0.9);
+    b.wobble = Math.sin(b.phase * 1.7) * 0.18;
+    b.z = (b.z + b.speed * dt) % trackLength;
+    b.bob += dt * 12;
+  }
+}
+function hitBike(b) {
+  const pts = 500 * state.combo;
+  state.score += pts;
+  state.combo = Math.min(state.combo + 1, 9); state.comboTimer = 3;
+  addFloater(`+${pts} عريس جنة!`, '#ffd23f');
+  say(pick(BIKE_LINES)); state.bubbleCool = 1.1;
+  b.fly = 0.001; b.flyDir = b.offset >= state.playerX ? 1 : -1;
+  state.shake = Math.max(state.shake, 0.15);
+  audio.noiseBurst(0.35, 900, 0.6); audio.beep(1320, 0.12);
+}
+
 // ---------------------------------------------------------------- update
 function setBanner(title, sub, ms = 1800) {
   const b = $('banner');
@@ -569,6 +614,7 @@ function update(dt) {
   state.score += state.speed * dt * 0.01 * (1 + (state.level - 1) * 0.15);
 
   updateTraffic(dt);
+  updateBikes(dt);
 
   const kmh = state.speed / MAX_SPEED * 190;
   MAY15.km -= kmh * dt / 360;            // game-time: the faster she drives, the faster the kilos fall
@@ -595,6 +641,13 @@ function update(dt) {
       if (!car.hit && gap < 230 && gap > -70 && state.speed > MAX_SPEED * 0.3) nearMiss(gap);
     } else if (rel > 60) car.passed = false;
     if (rel < -400) car.hit = false;
+  }
+
+  for (const b of state.bikes) {
+    if (b.fly > 0) continue;
+    const rel = relZ(b.z, pz);
+    const gap = Math.abs(state.playerX - b.offset) * ROAD_W - (PLAYER_W + b.type.collW) / 2;
+    if (rel > -40 && rel < 170 && gap < -30) hitBike(b);
   }
 
   if (state.comboTimer > 0) { state.comboTimer -= dt; if (state.comboTimer <= 0) state.combo = 1; }
@@ -769,6 +822,38 @@ function drawCar(car, seg, clip, fog) {
   }
 }
 
+function drawBike(b, seg, clip, fog) {
+  const rel = relZ(b.z, playerWorldZ());
+  const passFade = rel < 0 ? clamp(1 + rel / 260, 0, 1) : 1;
+  const alpha = (1 - fog * 0.85) * passFade * (b.fly > 0 ? clamp(1 - b.fly / 1.1, 0, 1) : 1);
+  if (alpha <= 0) return;
+  const pct = (b.z % SEG) / SEG;
+  const s1 = seg.p1.screen, s2 = seg.p2.screen;
+  const scale = lerp(s1.scale, s2.scale, pct);
+  if (!(scale > 0)) return;
+  let x = lerp(s1.x, s2.x, pct) + scale * b.offset * ROAD_W * W / 2;
+  let y = lerp(s1.y, s2.y, pct);
+  if (clip && y > clip + 2) return;          // hidden behind a hill crest
+  const img = b.type.spr;
+  const dw = b.type.w * scale * W / 2, dh = dw * img.height / img.width;
+  let rot = b.wobble;
+  if (b.fly > 0) {
+    x += b.flyDir * b.fly * 700 * scale * W / 2;
+    y -= (b.fly * 1400 - b.fly * b.fly * 900) * scale * H / 2;
+    rot += b.flyDir * b.fly * 9;
+  } else {
+    y += Math.sin(b.bob) * scale * 8 * H / 2;
+    ctx.fillStyle = `rgba(0,0,0,${0.3 * alpha})`;
+    ctx.beginPath(); ctx.ellipse(x, y, dw * 0.35, dw * 0.06, 0, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y); ctx.rotate(rot);
+  if (b.fly > 0) ctx.translate(0, -dh / 2);   // spin around the middle once airborne
+  ctx.drawImage(img, -dw / 2, b.fly > 0 ? -dh / 2 : -dh, dw, dh);
+  ctx.restore();
+}
+
 function drawPlayer() {
   const img = PLAYER_SPR;
   if (!img) return;
@@ -852,7 +937,7 @@ function render(dt) {
 
   // bucket cars by segment
   const bySeg = new Map();
-  for (const car of state.cars) {
+  for (const car of state.cars.concat(state.bikes)) {
     if (car.z < 0) continue;
     const si = Math.floor(car.z / SEG) % segments.length;
     if (!bySeg.has(si)) bySeg.set(si, []);
@@ -870,7 +955,7 @@ function render(dt) {
       drawSprite(s.src.img, s.src.w, sc, sx, seg.p1.screen.y, s.offset < 0 ? -1 : 0, seg.clip, 1 - seg.fog * 0.8);
     }
     const cars = bySeg.get(seg.index);
-    if (cars) { cars.sort((a, b) => b.z - a.z); for (const c of cars) drawCar(c, seg, seg.clip, seg.fog); }
+    if (cars) { cars.sort((a, b) => b.z - a.z); for (const c of cars) c.bike ? drawBike(c, seg, seg.clip, seg.fog) : drawCar(c, seg, seg.clip, seg.fog); }
     if (seg === playerSeg && state.mode !== 'start') playerInfo = drawPlayer();
   }
   if (!playerInfo && state.mode !== 'start') playerInfo = drawPlayer();
@@ -1050,7 +1135,7 @@ function resetGame() {
   Object.assign(state, {
     position: 0, playerX: 0.25, speed: 0, steer: 0, score: 0, distance: 0, nearCount: 0,
     time: 0, level: 1, lives: 3, invuln: 0, shake: 0, combo: 1, comboTimer: 0, bubble: null, bubbleCool: 0,
-    floaters: [], cars: [], skyOffset: 0, hornCool: 0, bgIndex: 0, bgFade: 1, sparks: [],
+    floaters: [], cars: [], bikes: [], skyOffset: 0, hornCool: 0, bgIndex: 0, bgFade: 1, sparks: [],
   });
   MAY15.km = 25; $('may15').classList.remove('on');
   $('level').textContent = '1'; $('best').textContent = Math.floor(state.best); updateLives();
@@ -1190,8 +1275,8 @@ async function boot() {
     new Promise(r => setTimeout(r, 2500)),
   ]) : Promise.resolve();
   await Promise.all([
-    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=8`)),
-    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=8'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=8'),
+    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=9`)),
+    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=9'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=9'),
     fontsReady,
   ]);
   buildCarTypes();
