@@ -27,7 +27,8 @@ const LANE_X = [-0.75, -0.25, 0.25, 0.75];
 const FOV = 100;
 const CAM_H = 1750;
 const CAM_DEPTH = 1 / Math.tan((FOV / 2) * Math.PI / 180);
-const DRAW_DIST = 300;
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches;
+const DRAW_DIST = IS_TOUCH ? 220 : 300;   // shorter view on phones to keep the frame rate up
 const PLAYER_Z = CAM_H * CAM_DEPTH;
 const HORIZON_Y = H * 0.42;    // screen-space horizon; above centre so more of the road ahead shows
 const MAX_SPEED = SEG * 60;   // units / s
@@ -1112,17 +1113,46 @@ const TEST = new URLSearchParams(location.search).has('test');
 if (TEST) window.__asmaa = { state, keys, honk, step(n) { for (let i = 0; i < n; i++) { last -= 1000 / 60; frame(performance.now(), true); } } };
 document.addEventListener('visibilitychange', () => { if (document.hidden && !TEST) pause(true); });
 
+// steering: every finger on the road area steers toward its half of the screen,
+// and sliding a finger across the middle switches direction
+const steerTouches = new Map();
+function updateSteer() {
+  let l = false, r = false;
+  for (const side of steerTouches.values()) { if (side < 0) l = true; else r = true; }
+  keys.left = l; keys.right = r;
+  $('tLeft').classList.toggle('held', l); $('tRight').classList.toggle('held', r);
+}
+function steerSide(e) { const b = $('tSteer').getBoundingClientRect(); return e.clientX < b.left + b.width / 2 ? -1 : 1; }
+const steerEl = $('tSteer');
+steerEl.addEventListener('pointerdown', e => { e.preventDefault(); try { steerEl.setPointerCapture(e.pointerId); } catch (err) {} steerTouches.set(e.pointerId, steerSide(e)); updateSteer(); });
+steerEl.addEventListener('pointermove', e => { if (steerTouches.has(e.pointerId)) { steerTouches.set(e.pointerId, steerSide(e)); updateSteer(); } });
+for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) steerEl.addEventListener(ev, e => { steerTouches.delete(e.pointerId); updateSteer(); });
+
 function bindHold(el, key) {
   const on = e => { e.preventDefault(); keys[key] = true; };
   const off = e => { e.preventDefault(); keys[key] = false; };
   el.addEventListener('pointerdown', on); el.addEventListener('pointerup', off);
   el.addEventListener('pointerleave', off); el.addEventListener('pointercancel', off);
 }
-bindHold($('tLeft'), 'left'); bindHold($('tRight'), 'right'); bindHold($('tBrake'), 'down');
+bindHold($('tBrake'), 'down');
 $('tHorn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'play') honk(); });
-if (matchMedia('(pointer: coarse)').matches) $('touch').classList.add('on');
+function enableTouchUI() { $('touch').classList.add('on'); $('wrap').classList.add('touch'); }
+if (IS_TOUCH) enableTouchUI();
+addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
+$('pauseBtn').addEventListener('click', () => pause(true));
+// rotating to portrait mid-run pauses the game behind the "rotate your phone" screen
+matchMedia('(orientation: portrait)').addEventListener('change', e => { if (e.matches && IS_TOUCH) pause(true); });
+// phones: go fullscreen landscape on start where the browser allows it (Android; iOS ignores it)
+function goFullscreen() {
+  if (!IS_TOUCH) return;
+  const el = document.documentElement;
+  try {
+    const p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: 'hide' }) : null;
+    if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+  } catch (e) {}
+}
 
-$('go').onclick = startGame;
+$('go').onclick = () => { goFullscreen(); startGame(); };
 $('again').onclick = startGame;
 $('home').onclick = goHome;
 $('resume').onclick = () => pause(false);
@@ -1160,8 +1190,8 @@ async function boot() {
     new Promise(r => setTimeout(r, 2500)),
   ]) : Promise.resolve();
   await Promise.all([
-    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=7`)),
-    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=7'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=7'),
+    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=8`)),
+    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=8'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=8'),
     fontsReady,
   ]);
   buildCarTypes();

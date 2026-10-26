@@ -21,10 +21,11 @@
     margin: 0; height: 100%; background: #0d0a08; color: var(--cream);
     font-family: 'Cairo', system-ui, sans-serif; overflow: hidden;
     user-select: none; -webkit-user-select: none; touch-action: none;
+    -webkit-touch-callout: none; overscroll-behavior: none;
   }
   #wrap {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-    width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9)); width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9;
     container-type: inline-size; overflow: hidden; background: #000;
     box-shadow: 0 0 60px rgba(0,0,0,.6);
   }
@@ -96,7 +97,8 @@
   /* touch controls */
   #touch { position: absolute; inset: 0; display: none; }
   #touch.on { display: block; }
-  .tz { position: absolute; bottom: 0; top: 18%; width: 34%; pointer-events: auto; }
+  #tSteer { position: absolute; inset: 18% 0 0 0; pointer-events: auto; }
+  .tz { position: absolute; bottom: 0; top: 0; width: 50%; }
   #tLeft { left: 0; } #tRight { right: 0; }
   .tbtn {
     position: absolute; bottom: 2cqw; width: 9cqw; height: 9cqw; border-radius: 50%;
@@ -105,8 +107,23 @@
   }
   #tBrake { left: 50%; transform: translateX(-125%); }
   #tHorn { left: 50%; transform: translateX(25%); }
-  .tarrow { position: absolute; bottom: 3cqw; font-size: 5cqw; opacity: .45; color: #fff; }
+  .tarrow { position: absolute; bottom: 12cqw; font-size: 5cqw; opacity: .45; color: #fff; }
   #tLeft .tarrow { left: 3cqw; } #tRight .tarrow { right: 3cqw; }
+  .tz.held .tarrow { opacity: .9; }
+  #pauseBtn {
+    position: absolute; right: 1.6cqw; top: 15cqw; z-index: 4; pointer-events: auto; display: none;
+    background: var(--panel); border: none; color: #fff; border-radius: 1cqw;
+    font-size: 2cqw; width: 4.6cqw; height: 4.6cqw; cursor: pointer;
+  }
+  .touch #pauseBtn { display: block; }
+  .touch .keys-hint { display: none; } .touch-hint { display: none; } .touch .touch-hint { display: inline; }
+  #rotate {
+    position: fixed; inset: 0; z-index: 20; display: none; place-items: center; text-align: center;
+    background: #0d0a08; color: var(--cream); font-weight: 800; font-size: 6vw; line-height: 1.7; padding: 8vw;
+  }
+  #rotate .ph { font-size: 22vw; display: inline-block; animation: tilt 1.6s ease-in-out infinite; }
+  @keyframes tilt { 0%, 30% { transform: rotate(0); } 60%, 100% { transform: rotate(-90deg); } }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: grid; } }
 
   /* ---------- overlay screens ---------- */
   .modal {
@@ -150,7 +167,8 @@
       <div><span class="best">أعلى سكور: <span id="bestStart">0</span></span></div>
       <div class="board" hidden><h3>لوحة الشرف</h3><ol id="boardStart"></ol></div>
       <div class="hint">
-        <b>← →</b> سواقة &nbsp; <b>↓</b> فرامل &nbsp; <b>↑</b> بنزين &nbsp; <b>مسافة</b> كلاكس<br>
+        <span class="keys-hint"><b>← →</b> سواقة &nbsp; <b>↓</b> فرامل &nbsp; <b>↑</b> بنزين &nbsp; <b>مسافة</b> كلاكس</span>
+        <span class="touch-hint"><b>اضغطي يمين/شمال</b> للسواقة &nbsp; <b>■</b> فرامل &nbsp; <b>📣</b> كلاكس</span><br>
         عدّي جنب العربيات قريب أوي عشان البونص
       </div>
     </div>
@@ -172,11 +190,14 @@
     <div id="speedo" class="chip"><span class="v" id="speed">0</span><span class="k">كم/س</span></div>
     <div id="combo" class="chip"><span class="k">كومبو</span><span class="v" id="comboV">x1</span></div>
     <div id="touch">
-      <div class="tz" id="tLeft"><span class="tarrow">◀</span></div>
-      <div class="tz" id="tRight"><span class="tarrow">▶</span></div>
+      <div id="tSteer">
+        <div class="tz" id="tLeft"><span class="tarrow">◀</span></div>
+        <div class="tz" id="tRight"><span class="tarrow">▶</span></div>
+      </div>
       <div class="tbtn" id="tBrake">■</div>
       <div class="tbtn" id="tHorn">📣</div>
     </div>
+    <button id="pauseBtn" aria-label="استراحة">⏸</button>
   </div>
 
   <div id="pause" class="screen">
@@ -200,6 +221,7 @@
   <button id="mute" aria-label="الصوت">🔊</button>
   <div id="loading">بنحمّل الدائري...</div>
 </div>
-<script src="game.js?v=7"></script>
+<div id="rotate"><div><span class="ph">📱</span><br>لفّي الموبايل بالعرض عشان تلعبي</div></div>
+<script src="game.js?v=8"></script>
 </body>
 </html>
