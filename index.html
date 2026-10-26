@@ -16,7 +16,8 @@
     --cream: #fff6e5;
     --panel: rgba(20, 14, 10, .72);
   }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: none; }
+  button { touch-action: manipulation; }
   html, body {
     margin: 0; height: 100%; background: #0d0a08; color: var(--cream);
     font-family: 'Cairo', system-ui, sans-serif; overflow: hidden;
@@ -222,6 +223,6 @@
   <div id="loading">بنحمّل الدائري...</div>
 </div>
 <div id="rotate"><div><span class="ph">📱</span><br>لفّي الموبايل بالعرض عشان تلعبي</div></div>
-<script src="game.js?v=10"></script>
+<script src="game.js?v=11"></script>
 </body>
 </html>

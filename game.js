@@ -1221,6 +1221,25 @@ function bindHold(el, key) {
 }
 bindHold($('tBrake'), 'down');
 $('tHorn').addEventListener('pointerdown', e => { e.preventDefault(); if (state.mode === 'play') honk(); });
+// iPhone Safari ignores user-scalable=no: block double-tap and pinch zoom ourselves,
+// and if the page still ends up zoomed in, snap it back to 1x.
+let lastTouchEnd = 0;
+document.addEventListener('touchend', e => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 350 && !e.target.closest('button')) e.preventDefault();
+  lastTouchEnd = now;
+}, { passive: false });
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+function resetZoom() {
+  const vp = document.querySelector('meta[name=viewport]');
+  if (!vp || !window.visualViewport || visualViewport.scale <= 1.01) return;
+  const c = vp.getAttribute('content');
+  vp.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+  setTimeout(() => vp.setAttribute('content', c), 300);
+}
+if (window.visualViewport) visualViewport.addEventListener('resize', resetZoom);
+
 function enableTouchUI() { $('touch').classList.add('on'); $('wrap').classList.add('touch'); }
 if (IS_TOUCH) enableTouchUI();
 addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
@@ -1275,8 +1294,8 @@ async function boot() {
     new Promise(r => setTimeout(r, 2500)),
   ]) : Promise.resolve();
   await Promise.all([
-    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=10`)),
-    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=10'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=10'),
+    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=11`)),
+    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=11'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=11'),
     fontsReady,
   ]);
   buildCarTypes();
