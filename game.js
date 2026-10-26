@@ -117,7 +117,7 @@ function buildCarTypes() {
   if (IMG.verna) add('verna', IMG.verna, 1050, { collW: 690, weight: 0.7, lights: [0.04, 0.4] });
   if (IMG.truck) add('truck', IMG.truck, 640, { weight: 0.8, speed: [0.16, 0.26], changer: 0.05, lights: [0.08, 0.95] });
   CAR_TYPES = t;
-  BIKE_TYPES = [['bike1', 400], ['bike2', 440], ['bike3', 760]].filter(([k]) => IMG[k]).map(([k, w]) => ({ key: k, spr: IMG[k], w, collW: 330 }));
+  BIKE_TYPES = [['bike1', 260], ['bike2', 290], ['bike3', 500]].filter(([k]) => IMG[k]).map(([k, w]) => ({ key: k, spr: IMG[k], w, collW: 240 }));
   if (IMG.kia_rear) PLAYER_SPR = platedSprite(IMG.kia_rear, [0.387, 0.699, 0.225, 0.143], 'Galaxy', null);
   if (IMG.kia_front) START_CAR = platedSprite(IMG.kia_front, [0.122, 0.625, 0.19, 0.15], 'Galaxy', null);
 }
@@ -608,7 +608,7 @@ function update(dt) {
   state.playerX = clamp(state.playerX, -1.0, 1.35);
   state.speed = clamp(state.speed, 0, MAX_SPEED * 1.05);
 
-  state.position = (state.position + state.speed * dt) % trackLength;
+  state.position = ((state.position + state.speed * dt) % trackLength + trackLength) % trackLength;
   state.skyOffset += playerSegment.curve * pct * dt * 0.06;
   state.distance += state.speed * dt;
   state.score += state.speed * dt * 0.01 * (1 + (state.level - 1) * 0.15);
@@ -1248,7 +1248,7 @@ $('mute').textContent = audio.muted ? '🔇' : '🔊';
 // ---------------------------------------------------------------- loop
 var last = performance.now(), startTime = 0;
 function frame(now, manual) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now; startTime += dt;
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = Math.max(last, now); startTime += dt;
   if (state.mode === 'start') drawStart(dt, startTime);
   else if (state.mode !== 'loading') {
     if (state.mode === 'count') {
@@ -1275,8 +1275,8 @@ async function boot() {
     new Promise(r => setTimeout(r, 2500)),
   ]) : Promise.resolve();
   await Promise.all([
-    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=9`)),
-    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=9'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=9'),
+    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=10`)),
+    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=10'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=10'),
     fontsReady,
   ]);
   buildCarTypes();
