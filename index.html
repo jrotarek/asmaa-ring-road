@@ -91,6 +91,19 @@
   #may15 .d { font-weight: 900; font-size: 2.1cqw; color: #ffe27a; direction: rtl; }
   #may15 .e { font-weight: 700; font-size: 1cqw; letter-spacing: .2cqw; opacity: .85; direction: ltr; }
   #speedo { position: absolute; left: 1.6cqw; bottom: 1.6cqw; }
+  #radioBtn {
+    position: absolute; left: 1.6cqw; bottom: 8.6cqw; z-index: 4; pointer-events: auto; cursor: pointer;
+    display: flex; align-items: center; gap: .8cqw; border: .2cqw solid rgba(125,255,176,.25);
+    background: #0f2219; color: #7dffb0; border-radius: 1cqw; padding: .4cqw 1cqw; text-align: right;
+    font-family: 'Cairo', system-ui, sans-serif; max-width: 30cqw;
+  }
+  #radioBtn .ri { font-size: 2.2cqw; filter: grayscale(.6); }
+  #radioBtn.on .ri { filter: none; animation: pulse .5s infinite alternate; }
+  #radioBtn .rt { display: grid; min-width: 0; line-height: 1.25; }
+  #radioBtn #radioFreq { font-weight: 900; font-size: 1.6cqw; direction: rtl; letter-spacing: .1cqw; }
+  #radioBtn #radioName { font-weight: 700; font-size: 1.15cqw; color: #c9f5da; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #radioBtn:not(.on) #radioFreq { color: #5f8a72; }
+  #radioBtn:focus-visible { outline: .25cqw solid #7dffb0; }
   #combo { position: absolute; right: 1.6cqw; bottom: 1.6cqw; opacity: 0; transition: opacity .2s; }
   #combo.on { opacity: 1; }
   #combo .v { color: var(--accent); }
@@ -168,8 +181,8 @@
       <div><span class="best">أعلى سكور: <span id="bestStart">0</span></span></div>
       <div class="board" hidden><h3>لوحة الشرف</h3><ol id="boardStart"></ol></div>
       <div class="hint">
-        <span class="keys-hint"><b>← →</b> سواقة &nbsp; <b>↓</b> فرامل &nbsp; <b>↑</b> بنزين &nbsp; <b>مسافة</b> كلاكس</span>
-        <span class="touch-hint"><b>اضغطي يمين/شمال</b> للسواقة &nbsp; <b>■</b> فرامل &nbsp; <b>📣</b> كلاكس</span><br>
+        <span class="keys-hint"><b>← →</b> سواقة &nbsp; <b>↓</b> فرامل &nbsp; <b>↑</b> بنزين &nbsp; <b>مسافة</b> كلاكس &nbsp; <b>R</b> راديو</span>
+        <span class="touch-hint"><b>اضغطي يمين/شمال</b> للسواقة &nbsp; <b>■</b> فرامل &nbsp; <b>📣</b> كلاكس &nbsp; <b>📻</b> راديو</span><br>
         عدّي جنب العربيات قريب أوي، وخبطي عريس جنة عشان البونص
       </div>
     </div>
@@ -199,6 +212,7 @@
       <div class="tbtn" id="tHorn">📣</div>
     </div>
     <button id="pauseBtn" aria-label="استراحة">⏸</button>
+    <button id="radioBtn" aria-label="الراديو"><span class="ri">📻</span><span class="rt"><span id="radioFreq">OFF</span><span id="radioName">شغّلي الراديو</span></span></button>
   </div>
 
   <div id="pause" class="screen">
@@ -223,6 +237,6 @@
   <div id="loading">بنحمّل الدائري...</div>
 </div>
 <div id="rotate"><div><span class="ph">📱</span><br>لفّي الموبايل بالعرض عشان تلعبي</div></div>
-<script src="game.js?v=11"></script>
+<script src="game.js?v=12"></script>
 </body>
 </html>

@@ -362,7 +362,7 @@ const audio = {
     this.engine.frequency.setTargetAtTime(45 + p * 140, t, 0.1);
     this.engine2.frequency.setTargetAtTime(22 + p * 70, t, 0.1);
     this.filter.frequency.setTargetAtTime(300 + p * 900, t, 0.1);
-    this.engineGain.gain.setTargetAtTime(on ? 0.09 + p * 0.06 : 0, t, 0.15);
+    this.engineGain.gain.setTargetAtTime(on ? (0.09 + p * 0.06) * (radio.idx >= 0 ? 0.45 : 1) : 0, t, 0.15);
   },
   tone(freqs, dur, type = 'square', vol = 0.15) {
     if (!this.ctx) return;
@@ -383,6 +383,49 @@ const audio = {
   whoosh() { this.noiseBurst(0.35, 1400, 0.35); },
   beep(f = 660, d = 0.12) { this.tone([f], d, 'sine', 0.2); },
 };
+
+// ---------------------------------------------------------------- car radio
+const STATIONS = [
+  { file: 'assets/music/radio1.mp3', freq: '٩٨٫٨', name: 'اخوك جايبها م الصفر', artist: 'حمو المرشدي' },
+  { file: 'assets/music/radio2.mp3', freq: '١٠٠٫٦', name: 'طول ما انا عالي', artist: 'حمو المرشدي' },
+  { file: 'assets/music/radio3.mp3', freq: '١٠٤٫٢', name: 'ركبت الخصومه', artist: 'حمو المرشدي' },
+];
+// idx -1 = radio off; the last station is remembered and comes back on the next drive
+const radio = { idx: -1, el: null, ok: STATIONS.map(() => true) };
+{ const w = +store.get('asmaa_radio', -1); radio.idx = w >= 0 && w < STATIONS.length ? w : -1; }
+function radioShouldPlay() { return state.mode === 'play' || state.mode === 'count'; }
+function syncRadio() {
+  const st = STATIONS[radio.idx];
+  if (!st || !radio.ok[radio.idx]) { if (radio.el) radio.el.pause(); return; }
+  if (!radio.el) {
+    radio.el = new Audio(); radio.el.loop = true; radio.el.preload = 'auto';
+    radio.el.addEventListener('error', () => { radio.ok[radio.idx] = false; setStation(-1); hideRadioIfEmpty(); });
+  }
+  if (radio.el.dataset.file !== st.file) { radio.el.dataset.file = st.file; radio.el.src = st.file; }
+  radio.el.volume = audio.muted ? 0 : 0.75;
+  if (radioShouldPlay()) { const p = radio.el.play(); if (p && p.catch) p.catch(() => {}); } else radio.el.pause();
+}
+function renderRadio() {
+  const st = STATIONS[radio.idx];
+  $('radioFreq').textContent = st ? 'FM ' + st.freq : 'OFF';
+  $('radioName').textContent = st ? `${st.name} · ${st.artist}` : 'شغّلي الراديو';
+  $('radioBtn').classList.toggle('on', !!st);
+}
+function setStation(i) { radio.idx = i; store.set('asmaa_radio', i); renderRadio(); syncRadio(); }
+function nextStation() {
+  audio.init();
+  let i = radio.idx;
+  for (let k = 0; k <= STATIONS.length; k++) { i = i + 1 >= STATIONS.length ? -1 : i + 1; if (i < 0 || radio.ok[i]) break; }
+  audio.noiseBurst(0.25, 2600, 0.25);   // a little static between stations
+  setStation(i);
+}
+function hideRadioIfEmpty() { $('radioBtn').hidden = !radio.ok.some(Boolean); }
+// the songs may not be shipped with every copy of the game; drop the radio when they're missing
+function checkStations() {
+  STATIONS.forEach((st, i) => fetch(st.file, { method: 'HEAD' })
+    .then(r => { if (!r.ok) throw 0; })
+    .catch(() => { radio.ok[i] = false; if (radio.idx === i) setStation(-1); hideRadioIfEmpty(); }));
+}
 
 // ---------------------------------------------------------------- traffic
 function laneOf(offset) { let best = 0; for (let i = 1; i < LANES; i++) if (Math.abs(LANE_X[i] - offset) < Math.abs(LANE_X[best] - offset)) best = i; return best; }
@@ -1148,11 +1191,13 @@ function startGame() {
   for (let i = 0; i < trafficTarget(); i++) { const c = {}; state.cars.push(c); spawnCar(c, 25, DRAW_DIST * 0.95); }
   state.mode = 'count'; state.countdown = 3.0;
   showScreen('hud');
+  syncRadio();
   audio.beep(520, 0.12);
 }
 
 function gameOver() {
   state.mode = 'over';
+  syncRadio();
   $('may15').classList.remove('on');
   audio.setEngine(0, false);
   const sc = Math.floor(state.score);
@@ -1171,6 +1216,7 @@ function gameOver() {
 
 function goHome() {
   state.mode = 'start';
+  syncRadio();
   audio.setEngine(0, false);
   $('bestStart').textContent = Math.floor(state.best).toLocaleString('en');
   showScreen('start');
@@ -1179,6 +1225,7 @@ function goHome() {
 function pause(on) {
   if (on && state.mode === 'play') { state.mode = 'pause'; audio.setEngine(0, false); showScreen('pause'); }
   else if (!on && state.mode === 'pause') { state.mode = 'play'; showScreen('hud'); }
+  syncRadio();
 }
 
 // ---------------------------------------------------------------- input
@@ -1187,6 +1234,7 @@ addEventListener('keydown', e => {
   if (KEYMAP[e.code]) { keys[KEYMAP[e.code]] = true; e.preventDefault(); }
   if (e.code === 'Space' || e.code === 'KeyH') { e.preventDefault(); if (state.mode === 'play') honk(); }
   if (e.code === 'Escape' || e.code === 'KeyP') pause(state.mode === 'play');
+  if (e.code === 'KeyR' && (state.mode === 'play' || state.mode === 'count' || state.mode === 'pause')) nextStation();
   if (e.code === 'Enter') {
     if (state.mode === 'start' || state.mode === 'over') startGame();
     else if (state.mode === 'pause') pause(false);
@@ -1195,7 +1243,7 @@ addEventListener('keydown', e => {
 addEventListener('keyup', e => { if (KEYMAP[e.code]) keys[KEYMAP[e.code]] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 const TEST = new URLSearchParams(location.search).has('test');
-if (TEST) window.__asmaa = { state, keys, honk, step(n) { for (let i = 0; i < n; i++) { last -= 1000 / 60; frame(performance.now(), true); } } };
+if (TEST) window.__asmaa = { state, keys, honk, radio, step(n) { for (let i = 0; i < n; i++) { last -= 1000 / 60; frame(performance.now(), true); } } };
 document.addEventListener('visibilitychange', () => { if (document.hidden && !TEST) pause(true); });
 
 // steering: every finger on the road area steers toward its half of the screen,
@@ -1261,7 +1309,10 @@ $('again').onclick = startGame;
 $('home').onclick = goHome;
 $('resume').onclick = () => pause(false);
 $('quit').onclick = goHome;
-$('mute').onclick = () => { audio.init(); audio.setMuted(!audio.muted); $('mute').textContent = audio.muted ? '🔇' : '🔊'; };
+$('mute').onclick = () => { audio.init(); audio.setMuted(!audio.muted); $('mute').textContent = audio.muted ? '🔇' : '🔊'; syncRadio(); };
+$('radioBtn').addEventListener('click', nextStation);
+renderRadio();
+checkStations();
 $('mute').textContent = audio.muted ? '🔇' : '🔊';
 
 // ---------------------------------------------------------------- loop
@@ -1294,8 +1345,8 @@ async function boot() {
     new Promise(r => setTimeout(r, 2500)),
   ]) : Promise.resolve();
   await Promise.all([
-    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=11`)),
-    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=11'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=11'),
+    ...IMG_LIST.map(n => loadImage(n, `assets/${n}.png?v=12`)),
+    loadImage('bg_cairo', 'assets/bg_cairo.jpg?v=12'), loadImage('bg_ring', 'assets/bg_ring.jpg?v=12'),
     fontsReady,
   ]);
   buildCarTypes();
