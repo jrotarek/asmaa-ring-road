@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>أسماء على الدائري</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;800;900&family=Lalezar&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1b1410;
+    --sand: #f3d9a4;
+    --accent: #ff7a1a;
+    --accent-dark: #c4520a;
+    --cream: #fff6e5;
+    --panel: rgba(20, 14, 10, .72);
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; background: #0d0a08; color: var(--cream);
+    font-family: 'Cairo', system-ui, sans-serif; overflow: hidden;
+    user-select: none; -webkit-user-select: none; touch-action: none;
+  }
+  #wrap {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9;
+    container-type: inline-size; overflow: hidden; background: #000;
+    box-shadow: 0 0 60px rgba(0,0,0,.6);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  .screen { position: absolute; inset: 0; display: none; }
+  .screen.on { display: block; }
+
+  /* ---------- start screen ---------- */
+  #start .panel {
+    position: absolute; right: 4cqw; top: 6cqw; width: 42cqw; text-align: center;
+  }
+  .title {
+    font-family: 'Lalezar', 'Cairo', sans-serif; font-weight: 400; margin: 0;
+    font-size: 7.4cqw; line-height: 1.05; color: var(--cream);
+    text-shadow: 0 .35cqw 0 var(--accent-dark), 0 .8cqw 1.6cqw rgba(0,0,0,.45);
+  }
+  .title small { display: block; font-size: 3.2cqw; color: var(--sand); text-shadow: 0 .2cqw 0 rgba(0,0,0,.5); }
+  .en { font-family: 'Cairo'; font-weight: 900; letter-spacing: .5cqw; font-size: 1.5cqw; color: #fff; opacity: .9; margin-top: .6cqw; direction: ltr; }
+  .btn {
+    font-family: 'Lalezar', 'Cairo', sans-serif; font-size: 3.4cqw; color: #fff; cursor: pointer;
+    background: linear-gradient(#ff9a3d, var(--accent)); border: none; border-radius: 1.4cqw;
+    padding: .6cqw 3.6cqw .9cqw; margin-top: 2cqw;
+    box-shadow: 0 .55cqw 0 var(--accent-dark), 0 1cqw 2cqw rgba(0,0,0,.35);
+    transition: transform .08s;
+  }
+  .btn:active { transform: translateY(.4cqw); box-shadow: 0 .15cqw 0 var(--accent-dark); }
+  .btn.ghost { background: rgba(255,255,255,.15); box-shadow: 0 .4cqw 0 rgba(0,0,0,.35); font-size: 2.4cqw; }
+  .best {
+    display: inline-block; margin-top: 1.6cqw; font-weight: 800; font-size: 1.8cqw;
+    background: var(--panel); padding: .4cqw 1.6cqw; border-radius: 3cqw;
+  }
+  .hint { margin-top: 1.4cqw; font-size: 1.35cqw; font-weight: 600; color: #fff; text-shadow: 0 .1cqw .3cqw rgba(0,0,0,.8); line-height: 1.7; }
+  .hint b { background: rgba(0,0,0,.45); padding: 0 .6cqw; border-radius: .5cqw; font-weight: 800; }
+
+  /* ---------- HUD ---------- */
+  #hud { pointer-events: none; }
+  .hud-row { position: absolute; top: 1.4cqw; left: 1.6cqw; right: 1.6cqw; display: flex; justify-content: space-between; align-items: flex-start; }
+  .chip {
+    background: var(--panel); border-radius: 1.2cqw; padding: .5cqw 1.4cqw; text-align: center;
+    font-weight: 800; font-size: 1.4cqw; line-height: 1.25; min-width: 9cqw;
+  }
+  .chip .v { display: block; font-size: 2.6cqw; font-weight: 900; color: #fff; direction: ltr; }
+  .chip .k { color: var(--sand); }
+  .chips { display: flex; gap: .8cqw; }
+  #lives { font-size: 2.2cqw; letter-spacing: .3cqw; direction: ltr; }
+  #banner {
+    position: absolute; left: 0; right: 0; top: 30%; text-align: center; opacity: 0;
+    font-family: 'Lalezar', 'Cairo'; font-size: 6cqw; color: #fff;
+    text-shadow: 0 .4cqw 0 var(--accent-dark), 0 0 2cqw rgba(0,0,0,.6);
+    transition: opacity .3s, transform .3s; transform: scale(.9);
+  }
+  #banner.show { opacity: 1; transform: scale(1); }
+  #banner small { display: block; font-family: 'Cairo'; font-weight: 800; font-size: 2.2cqw; color: var(--sand); text-shadow: 0 .2cqw .6cqw #000; }
+  #may15 {
+    position: absolute; left: 50%; top: 1.4cqw; transform: translate(-50%, -140%);
+    background: #1f6b3a; border: .3cqw solid #fff; outline: .25cqw solid #1f6b3a; border-radius: 1cqw;
+    padding: .3cqw 2cqw .4cqw; text-align: center; color: #fff; line-height: 1.15;
+    transition: transform .35s cubic-bezier(.2,1.4,.5,1); box-shadow: 0 .6cqw 1.4cqw rgba(0,0,0,.35);
+  }
+  #may15.on { transform: translate(-50%, 0); }
+  #may15 .t { font-weight: 900; font-size: 2.4cqw; }
+  #may15 .d { font-weight: 900; font-size: 2.1cqw; color: #ffe27a; direction: rtl; }
+  #may15 .e { font-weight: 700; font-size: 1cqw; letter-spacing: .2cqw; opacity: .85; direction: ltr; }
+  #speedo { position: absolute; left: 1.6cqw; bottom: 1.6cqw; }
+  #combo { position: absolute; right: 1.6cqw; bottom: 1.6cqw; opacity: 0; transition: opacity .2s; }
+  #combo.on { opacity: 1; }
+  #combo .v { color: var(--accent); }
+
+  /* touch controls */
+  #touch { position: absolute; inset: 0; display: none; }
+  #touch.on { display: block; }
+  .tz { position: absolute; bottom: 0; top: 18%; width: 34%; pointer-events: auto; }
+  #tLeft { left: 0; } #tRight { right: 0; }
+  .tbtn {
+    position: absolute; bottom: 2cqw; width: 9cqw; height: 9cqw; border-radius: 50%;
+    background: rgba(0,0,0,.35); border: .3cqw solid rgba(255,255,255,.5); color: #fff;
+    font-size: 3.4cqw; display: grid; place-items: center; pointer-events: auto; font-weight: 900;
+  }
+  #tBrake { left: 50%; transform: translateX(-125%); }
+  #tHorn { left: 50%; transform: translateX(25%); }
+  .tarrow { position: absolute; bottom: 3cqw; font-size: 5cqw; opacity: .45; color: #fff; }
+  #tLeft .tarrow { left: 3cqw; } #tRight .tarrow { right: 3cqw; }
+
+  /* ---------- overlay screens ---------- */
+  .modal {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: radial-gradient(ellipse at center, rgba(10,6,4,.55), rgba(10,6,4,.85));
+  }
+  .card { text-align: center; }
+  .big { font-family: 'Lalezar', 'Cairo'; font-size: 6.4cqw; margin: 0; color: #fff; text-shadow: 0 .4cqw 0 var(--accent-dark); }
+  .score-big { font-size: 7cqw; font-weight: 900; direction: ltr; color: var(--sand); line-height: 1.1; }
+  .sub { font-weight: 800; font-size: 1.8cqw; color: #fff; opacity: .9; }
+  .record { color: #ffd23f; font-family: 'Lalezar', 'Cairo'; font-size: 3cqw; animation: pulse .7s infinite alternate; }
+  @keyframes pulse { to { transform: scale(1.08); } }
+  .row { display: flex; gap: 1.6cqw; justify-content: center; }
+
+  #mute {
+    position: absolute; left: 1.6cqw; bottom: 1.6cqw; z-index: 5; pointer-events: auto;
+    background: var(--panel); border: none; color: #fff; border-radius: 1cqw;
+    font-size: 2cqw; width: 4.6cqw; height: 4.6cqw; cursor: pointer;
+  }
+  #hud.on ~ #mute { left: auto; right: 1.6cqw; top: 9cqw; bottom: auto; }
+  .board { margin: 1.2cqw auto 0; width: 26cqw; background: var(--panel); border-radius: 1.2cqw; padding: .6cqw 1.2cqw .8cqw; text-align: right; }
+  .board h3 { margin: 0 0 .3cqw; font-family: 'Lalezar', 'Cairo', sans-serif; font-weight: 400; font-size: 1.8cqw; color: var(--sand); text-align: center; }
+  .board ol { list-style: none; margin: 0; padding: 0; display: grid; gap: .15cqw; }
+  .board li { display: grid; grid-template-columns: 2cqw 1fr auto; gap: .8cqw; font-weight: 800; font-size: 1.3cqw; line-height: 1.5; }
+  .board li.me { color: #ffd23f; }
+  .board .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .board .sc { direction: ltr; font-variant-numeric: tabular-nums; }
+  #over .board { width: 30cqw; margin-bottom: 1cqw; }
+  #loading { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 2.4cqw; color: var(--sand); background: #0d0a08; z-index: 10; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="1280" height="720"></canvas>
+
+  <div id="start" class="screen">
+    <div class="panel">
+      <h1 class="title">أسماء على الدائري<small>اقل حاجة عند أسماء</small></h1>
+      <div class="en">ASMAA · RING ROAD RUSH</div>
+      <button class="btn" id="go">يلا بينا</button>
+      <div><span class="best">أعلى سكور: <span id="bestStart">0</span></span></div>
+      <div class="board" hidden><h3>لوحة الشرف</h3><ol id="boardStart"></ol></div>
+      <div class="hint">
+        <b>← →</b> سواقة &nbsp; <b>↓</b> فرامل &nbsp; <b>↑</b> بنزين &nbsp; <b>مسافة</b> كلاكس<br>
+        عدّي جنب العربيات قريب أوي عشان البونص
+      </div>
+    </div>
+  </div>
+
+  <div id="hud" class="screen">
+    <div class="hud-row">
+      <div class="chips">
+        <div class="chip"><span class="k">السكور</span><span class="v" id="score">0</span></div>
+        <div class="chip"><span class="k">الأعلى</span><span class="v" id="best">0</span></div>
+      </div>
+      <div class="chips">
+        <div class="chip"><span class="k">المستوى</span><span class="v" id="level">1</span></div>
+        <div class="chip"><span class="k">الأرواح</span><span class="v" id="lives">❤❤❤</span></div>
+      </div>
+    </div>
+    <div id="may15"><div class="t">↑ ١٥ مايو</div><div class="d" id="may15km">٢٥ كم</div><div class="e">15 MAY</div></div>
+    <div id="banner"></div>
+    <div id="speedo" class="chip"><span class="v" id="speed">0</span><span class="k">كم/س</span></div>
+    <div id="combo" class="chip"><span class="k">كومبو</span><span class="v" id="comboV">x1</span></div>
+    <div id="touch">
+      <div class="tz" id="tLeft"><span class="tarrow">◀</span></div>
+      <div class="tz" id="tRight"><span class="tarrow">▶</span></div>
+      <div class="tbtn" id="tBrake">■</div>
+      <div class="tbtn" id="tHorn">📣</div>
+    </div>
+  </div>
+
+  <div id="pause" class="screen">
+    <div class="modal"><div class="card">
+      <h2 class="big">استراحة</h2>
+      <div class="row"><button class="btn" id="resume">كمّلي</button><button class="btn ghost" id="quit">الرئيسية</button></div>
+    </div></div>
+  </div>
+
+  <div id="over" class="screen">
+    <div class="modal"><div class="card">
+      <h2 class="big" id="overTitle">خلصت يا أسماء!</h2>
+      <div class="score-big" id="finalScore">0</div>
+      <div class="record" id="newRecord" hidden>رقم قياسي جديد!</div>
+      <div class="sub">الأعلى: <span id="finalBest">0</span> · المسافة: <span id="finalDist">0</span> كم · قريبة: <span id="finalNear">0</span></div>
+      <div class="board" hidden><h3>لوحة الشرف</h3><ol id="boardOver"></ol></div>
+      <div class="row"><button class="btn" id="again">تاني!</button><button class="btn ghost" id="home">الرئيسية</button></div>
+    </div></div>
+  </div>
+
+  <button id="mute" aria-label="الصوت">🔊</button>
+  <div id="loading">بنحمّل الدائري...</div>
+</div>
+<script src="game.js?v=7"></script>
+</body>
+</html>
